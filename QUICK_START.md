@@ -35,7 +35,7 @@ cd frontend
 npm start
 ```
 
-Open http://localhost:3000 and test!
+Open http://localhost:5173 and test!
 
 ## Deploy to Production (3 Simple Steps)
 
@@ -62,28 +62,11 @@ After deployment, copy your Vercel URL:
 Example: https://rtspoverplay-abc123.vercel.app
 ```
 
-### Step 3: Update Render CORS
-
-**Option A: Use Helper Script**
-```bash
-update-cors.bat
-```
-Enter your Vercel URL when prompted.
-
-**Option B: Manual Update**
-1. Go to [Render Dashboard](https://dashboard.render.com)
-2. Select your `rtspoverplay` service
-3. Click **Environment** → Find `CORS_ORIGINS`
-4. Update to:
-   ```
-   http://localhost:3000,https://your-vercel-url.vercel.app
-   ```
-5. Save (service will restart automatically)
 
 ## Verify Everything Works
 
 ### Local Test:
-- Open http://localhost:3000
+- Open http://localhost:5173
 - Start a test stream
 - Add some overlays
 - Should work perfectly!
@@ -100,7 +83,7 @@ Result: App talks to local backend
 **Production Mode** (`npm run build` on Vercel):
 ```
 Loads: frontend/.env.production
-API URL: https://rtspoverplay.onrender.com
+API URL: https://livesitter-rtsp.onrender.com
 Result: App talks to Render backend
 ```
 

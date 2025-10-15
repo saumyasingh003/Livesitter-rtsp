@@ -50,7 +50,7 @@ npm start
 ```
 
 **Access the application:**
-   Open `http://localhost:3000` in your browser
+   Open `http://localhost:5173` in your browser
 
 ### Quick Test
 
@@ -72,8 +72,8 @@ npm start
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/rooter09/rtspoverplay.git
-cd rtspoverplay
+git clone https://github.com/saumyasingh003/Livesitter-rtsp.git
+cd livesitter-rtsp
 ```
 
 ### 2. Backend Setup
@@ -88,13 +88,6 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 #### Install Dependencies
 ```bash
 pip install -r requirements.txt
-```
-
-#### Configure Environment
-Create `backend/.env`:
-```env
-CORS_ORIGINS=http://localhost:3000
-MONGODB_URI=mongodb://localhost:27017/rtsp_overlay
 ```
 
 ### 3. Frontend Setup
@@ -170,14 +163,12 @@ export { API_BASE_URL };
 
 Create `backend/.env` for local development:
 ```env
-CORS_ORIGINS=http://localhost:3000
-MONGODB_URI=mongodb://localhost:27017/rtsp_overlay
+MONGO_URI=mongodb://localhost:27017/rtsp_overlay
 ```
 
 For production deployment on Render:
 ```env
-CORS_ORIGINS=http://localhost:3000,https://your-vercel-app.vercel.app
-MONGODB_URI=your_mongodb_atlas_connection_string
+MONGO_URI=your_mongodb_atlas_connection_string
 ```
 
 ### Frontend Configuration
@@ -201,8 +192,7 @@ All components automatically use the correct URL based on the build environment.
 
 2. **Set Environment Variables on Render:**
    ```env
-   CORS_ORIGINS=http://localhost:3000,https://your-vercel-app.vercel.app
-   MONGODB_URI=your_mongodb_connection_string
+   MONGO_URI=your_mongodb_connection_string
    ```
    
    **Important Notes:**
@@ -213,7 +203,7 @@ All components automatically use the correct URL based on the build environment.
 
 3. **Your Backend URL:**
    ```
-   https://rtspoverplay.onrender.com
+   https://livesitter-rtsp.onrender.com
    ```
 
 ### Frontend Deployment (Vercel)
@@ -227,35 +217,25 @@ All components automatically use the correct URL based on the build environment.
 
 2. **Set Environment Variable on Vercel:**
    ```env
-   REACT_APP_API_BASE_URL=https://rtspoverplay.onrender.com
+   VITE_API_BASE_URL=https://livesitter-rtsp.onrender.com
    ```
 
 3. **Deploy:**
    - Push to main branch to trigger automatic deployment
    - Vercel will build and deploy automatically
 
-### Update CORS After Deployment
-
-After deploying to Vercel, update the `CORS_ORIGINS` on Render:
-
-1. Go to Render Dashboard → Your Service → Environment
-2. Update `CORS_ORIGINS`:
-   ```
-   http://localhost:3000,https://your-actual-vercel-url.vercel.app
-   ```
-3. Save changes (service will restart automatically)
 
 ### Verification
 
 **Test Local Setup:**
 1. Start both backend and frontend locally
-2. Open http://localhost:3000
+2. Open http://localhost:5173
 3. Check browser console - API calls should go to `http://localhost:5000`
 
 **Test Production Setup:**
 1. Visit your Vercel URL
 2. Open DevTools → Network tab
-3. Verify API calls go to `https://rtspoverplay.onrender.com`
+3. Verify API calls go to `https://livesitter-rtsp.onrender.com`
 4. Check for CORS errors (there should be none!)
 
 ## 📖 API Documentation
@@ -341,20 +321,11 @@ net start MongoDB
 mongod
 ```
 
-### CORS Errors in Production
-
-**Problem:** Frontend can't connect to backend in production
-
-**Solution:**
-1. Verify `CORS_ORIGINS` on Render includes your Vercel URL
-2. Restart Render service after updating environment variables
-3. Clear browser cache and reload
-4. Ensure URLs don't have trailing slashes
 
 ### Environment Variables Not Loading
 
 **Frontend:**
-- Environment variables MUST start with `REACT_APP_`
+- Environment variables MUST start with `VITE`
 - Rebuild after changing `.env` files: `npm run build`
 - On Vercel, redeploy after changing environment variables
 
@@ -407,10 +378,8 @@ rtspoverplay/
 │   └── README.md              # Frontend docs
 │
 ├── API_DOCS.md                # Complete API documentation
-├── USER_GUIDE.md              # Detailed user guide
-├── README.md                  # This file
-├── start-backend.bat          # Windows backend starter
-└── start-frontend.bat         # Windows frontend starter
+├── README.md                  # User Guide
+
 ```
 
 ## 🧪 Testing RTSP URLs
@@ -454,7 +423,7 @@ rtsp://admin:password123@192.168.1.100:554/stream1
 ### Overlay System
 - Dynamic text overlay creation
 - Real-time positioning and editing
-- Customizable styling options
+- Customizable styling options1
 - Persistent storage in MongoDB
 - Multiple overlays support
 - Preset position shortcuts
@@ -523,113 +492,3 @@ Current FFmpeg configuration is optimized for:
 
 **Note:** All modern browsers are supported via HLS.js library.
 
-## 🔐 Security Considerations
-
-### For Production Deployment:
-
-**Essential Security Measures:**
-
-1. **Authentication**: Add API authentication for production
-   ```python
-   # Example: Add token-based authentication
-   from flask_jwt_extended import JWTManager
-   ```
-
-2. **HTTPS**: Always use HTTPS in production
-   - Configure SSL certificates on Render
-   - Ensure Vercel uses HTTPS (automatic)
-
-3. **Environment Variables**: Never commit sensitive data
-   - Use `.env` files for local development
-   - Use platform environment variables for production
-
-4. **CORS**: Restrict allowed origins
-   ```python
-   # Production: Only allow your frontend domain
-   CORS_ORIGINS=https://your-app.vercel.app
-   ```
-
-5. **Rate Limiting**: Implement rate limiting to prevent abuse
-   ```python
-   from flask_limiter import Limiter
-   ```
-
-6. **Input Validation**: Validate all RTSP URLs and overlay data
-   - Prevent injection attacks
-   - Sanitize user inputs
-
-7. **MongoDB Security**:
-   - Use authentication on MongoDB
-   - Use MongoDB Atlas with proper access controls
-   - Regularly backup your data
-
-### Security Checklist:
-
-- [ ] API authentication implemented
-- [ ] HTTPS enabled
-- [ ] Environment variables secured
-- [ ] CORS properly configured
-- [ ] Rate limiting enabled
-- [ ] Input validation in place
-- [ ] MongoDB secured with authentication
-- [ ] Regular security updates
-
-## 🚨 Reporting Issues
-
-When reporting issues, please include:
-
-- **Operating System**: Windows/macOS/Linux version
-- **Browser**: Name and version
-- **RTSP Source**: Camera/stream details (if applicable)
-- **Error Messages**: From both backend logs and browser console
-- **Steps to Reproduce**: How to recreate the issue
-- **Screenshots**: If applicable
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [HLS.js](https://github.com/video-dev/hls.js/) for browser video streaming
-- [React](https://reactjs.org/) for the frontend framework
-- [Flask](https://flask.palletsprojects.com/) for the backend API
-- [MongoDB](https://www.mongodb.com/) for data storage
-- [FFmpeg](https://ffmpeg.org/) for video processing
-
-## 📞 Support
-
-For support and questions:
-- Review this comprehensive README
-- Check the [API Documentation](API_DOCS.md) for technical details
-- Create an issue in the repository for bugs or feature requests
-- Review troubleshooting section above
-
-## 🎯 Project URLs
-
-- **Frontend (Local):** http://localhost:3000
-- **Backend (Local):** http://localhost:5000
-- **Backend (Production):** https://rtspoverplay.onrender.com
-- **API Health:** http://localhost:5000/api/health
-- **Stream Status:** http://localhost:5000/api/stream/status
-
-## ✨ Summary
-
-✅ **Dual environment support** - Works locally and in production  
-✅ **Automatic configuration** - No manual URL changes needed  
-✅ **Easy deployment** - Deploy to Vercel and Render  
-✅ **Complete API** - Full REST API for all operations  
-✅ **Real-time overlays** - Dynamic text overlay management  
-✅ **Production ready** - Fully configured and tested  
-
----
-
-**Built with ❤️ for real-time video streaming and overlay management**

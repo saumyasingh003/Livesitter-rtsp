@@ -319,10 +319,6 @@ Success responses (except GET requests) follow this format:
 ## Rate Limiting
 Currently, no rate limiting is implemented.
 
-## CORS
-The API supports CORS for cross-origin requests from `http://localhost:3000` (React development server).
-
----
 
 ## Examples
 
