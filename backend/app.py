@@ -22,6 +22,7 @@ CORS(app, origins=cors_origins, supports_credentials=True)
 @cross_origin(origins=cors_origins, supports_credentials=True)
 def serve_stream(filename):
     stream_dir = os.path.join(os.getcwd(), "stream")
+    os.makedirs(stream_dir, exist_ok=True)
     
     if filename.endswith('.m3u8'):
         # Serve playlist with live streaming headers
