@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, send_from_directory, Response
 from flask_cors import CORS
+from flask_cors import cross_origin
 from routes.overlays import overlays_bp
 from routes.stream import stream_bp
 import os
@@ -9,10 +10,8 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Configure CORS to support both localhost and production deployments
-# Get allowed origins from environment variable (comma-separated)
 cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
-# Strip whitespace from each origin
+
 cors_origins = [origin.strip() for origin in cors_origins]
 
 app.register_blueprint(overlays_bp, url_prefix="/api/overlays")
@@ -20,6 +19,7 @@ app.register_blueprint(stream_bp, url_prefix="/api/stream")
 
 CORS(app, origins=cors_origins, supports_credentials=True)
 @app.route("/stream/<path:filename>")
+@cross_origin(origins=cors_origins, supports_credentials=True)
 def serve_stream(filename):
     stream_dir = os.path.join(os.getcwd(), "stream")
     
