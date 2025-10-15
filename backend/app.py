@@ -14,11 +14,11 @@ app = Flask(__name__)
 cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 # Strip whitespace from each origin
 cors_origins = [origin.strip() for origin in cors_origins]
-CORS(app, origins=cors_origins, supports_credentials=True)
 
 app.register_blueprint(overlays_bp, url_prefix="/api/overlays")
 app.register_blueprint(stream_bp, url_prefix="/api/stream")
 
+CORS(app, origins=cors_origins, supports_credentials=True)
 @app.route("/stream/<path:filename>")
 def serve_stream(filename):
     stream_dir = os.path.join(os.getcwd(), "stream")
