@@ -126,7 +126,7 @@ const LandingPage = () => {
           </p>
           <div className="flex gap-4 mt-2 sm:mt-0">
             <a 
-              href="https://github.com/rooter09/rtspoverplay" 
+              href="https://github.com/saumyasingh003/Livesitter-rtsp" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-xs sm:text-sm opacity-80 hover:opacity-100 transition-opacity duration-200 hover:text-pink-300"
