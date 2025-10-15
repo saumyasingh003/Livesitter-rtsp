@@ -10,16 +10,16 @@ load_dotenv()
 
 app = Flask(__name__)
 
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+# cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 
-cors_origins = [origin.strip() for origin in cors_origins]
+# cors_origins = [origin.strip() for origin in cors_origins]
 
 app.register_blueprint(overlays_bp, url_prefix="/api/overlays")
 app.register_blueprint(stream_bp, url_prefix="/api/stream")
 
-CORS(app, origins=cors_origins, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 @app.route("/stream/<path:filename>")
-@cross_origin(origins=cors_origins, supports_credentials=True)
+@cross_origin(origins="*", supports_credentials=True)
 def serve_stream(filename):
     stream_dir = os.path.join(os.getcwd(), "stream")
     os.makedirs(stream_dir, exist_ok=True)
