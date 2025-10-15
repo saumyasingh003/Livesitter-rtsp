@@ -23,39 +23,29 @@ CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 def serve_stream(filename):
     stream_dir = os.path.join(os.getcwd(), "stream")
     os.makedirs(stream_dir, exist_ok=True)
-    
+
     if filename.endswith('.m3u8'):
-        # Serve playlist with live streaming headers
         def generate():
             playlist_path = os.path.join(stream_dir, filename)
             if os.path.exists(playlist_path):
-                try:
-                    with open(playlist_path, 'r') as f:
-                        content = f.read()
-                    # Ensure no ENDLIST marker for live streams
-                    content = content.replace('#EXT-X-ENDLIST', '')
-                    # Add live streaming headers if not present
-                    if '#EXT-X-VERSION:3' not in content:
-                        content = '#EXTM3U\n#EXT-X-VERSION:3\n' + content
-                    yield content
-                except Exception as e:
-                    print(f"Error reading playlist: {e}")
-                    yield '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n'
+                with open(playlist_path, 'r') as f:
+                    content = f.read()
+                content = content.replace('#EXT-X-ENDLIST', '')
+                if '#EXT-X-VERSION:3' not in content:
+                    content = '#EXTM3U\n#EXT-X-VERSION:3\n' + content
+                yield content
             else:
                 yield '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n'
-        
-        return Response(generate(), 
-                       mimetype='application/vnd.apple.mpegurl',
-                       headers={
-                           'Cache-Control': 'no-cache, no-store, must-revalidate',
-                           'Pragma': 'no-cache',
-                           'Expires': '0'
-                       })
-    else:
-        # Serve segments with appropriate headers
-        response = send_from_directory(stream_dir, filename, mimetype='video/mp2t')
-        response.headers['Cache-Control'] = 'public, max-age=10'
-        return response
+
+        resp = Response(generate(), mimetype='application/vnd.apple.mpegurl')
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Credentials'] = 'true'
+        return resp
+    else:  # .ts segments
+        resp = send_from_directory(stream_dir, filename, mimetype='video/mp2t')
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Credentials'] = 'true'
+        return resp
 
 @app.route("/api/health")
 def health_check():
