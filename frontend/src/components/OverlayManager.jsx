@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../config";
+import { FaTrash } from "react-icons/fa6";
 
 const OverlayManager = ({ overlays, refreshOverlays }) => {
   const [editingId, setEditingId] = useState(null);
@@ -236,7 +237,9 @@ const OverlayManager = ({ overlays, refreshOverlays }) => {
                     className="p-2 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg transition-colors duration-200"
                     title="Delete overlay"
                   >
-                    <span className="text-sm sm:text-base">🗑️</span>
+                    <span className="text-sm sm:text-base">
+                      <FaTrash/>
+                    </span>
                   </button>
                 </div>
               </div>
