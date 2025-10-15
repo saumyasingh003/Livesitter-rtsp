@@ -19,16 +19,15 @@ app.register_blueprint(stream_bp, url_prefix="/api/stream")
 
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 @app.route("/stream/<path:filename>")
-@cross_origin(origins="*", supports_credentials=True)
 def serve_stream(filename):
     stream_dir = os.path.join(os.getcwd(), "stream")
     os.makedirs(stream_dir, exist_ok=True)
 
     if filename.endswith('.m3u8'):
         def generate():
-            playlist_path = os.path.join(stream_dir, filename)
-            if os.path.exists(playlist_path):
-                with open(playlist_path, 'r') as f:
+            path = os.path.join(stream_dir, filename)
+            if os.path.exists(path):
+                with open(path, 'r') as f:
                     content = f.read()
                 content = content.replace('#EXT-X-ENDLIST', '')
                 if '#EXT-X-VERSION:3' not in content:
@@ -38,15 +37,12 @@ def serve_stream(filename):
                 yield '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n'
 
         resp = Response(generate(), mimetype='application/vnd.apple.mpegurl')
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        resp.headers['Access-Control-Allow-Credentials'] = 'true'
-        return resp
     else:  # .ts segments
         resp = send_from_directory(stream_dir, filename, mimetype='video/mp2t')
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        resp.headers['Access-Control-Allow-Credentials'] = 'true'
-        return resp
 
+    # Always add CORS for HLS
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
 @app.route("/api/health")
 def health_check():
     return jsonify({"status": "healthy", "message": "RTSP Overlay API is running"})
