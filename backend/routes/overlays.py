@@ -17,18 +17,42 @@ def create_overlay():
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
-        required_fields = ["text", "top", "left", "color", "fontSize"]
-        for field in required_fields:
-            if field not in data:
-                return jsonify({"error": f"Missing required field: {field}"}), 400
-    
-        overlay = {
-            "text": data["text"],
-            "top": data["top"],
-            "left": data["left"],
-            "color": data["color"],
-            "fontSize": data["fontSize"]
-        }
+        # Determine overlay type (default to text)
+        overlay_type = data.get("type", "text")
+        
+        if overlay_type == "image":
+            # Image overlay validation
+            if not data.get("imageUrl"):
+                return jsonify({"error": "Missing required field: imageUrl"}), 400
+            if "top" not in data or "left" not in data:
+                return jsonify({"error": "Missing required position fields: top, left"}), 400
+            
+            overlay = {
+                "type": "image",
+                "imageUrl": data["imageUrl"],
+                "top": data["top"],
+                "left": data["left"],
+                "width": data.get("width", "100px"),
+                "height": data.get("height", "100px"),
+                "opacity": data.get("opacity", 1),
+                "borderRadius": data.get("borderRadius", "0px")
+            }
+        else:
+            # Text overlay validation
+            required_fields = ["text", "top", "left", "color", "fontSize"]
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+            overlay = {
+                "type": "text",
+                "text": data["text"],
+                "top": data["top"],
+                "left": data["left"],
+                "color": data["color"],
+                "fontSize": data["fontSize"],
+                "backgroundColor": data.get("backgroundColor", "rgba(0,0,0,0.5)")
+            }
 
         result = collection.insert_one(overlay)
         overlay["_id"] = str(result.inserted_id)
@@ -72,7 +96,8 @@ def update_overlay(overlay_id):
             return jsonify({"error": "Invalid overlay ID"}), 400
 
         update_data = {}
-        allowed_fields = ["text", "top", "left", "color", "fontSize"]
+        allowed_fields = ["text", "top", "left", "color", "fontSize", "backgroundColor", 
+                          "imageUrl", "width", "height", "opacity", "borderRadius", "type"]
 
         for field in allowed_fields:
             if field in data:
