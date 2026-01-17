@@ -31,6 +31,35 @@ const LandingPage = () => {
     setIsStreaming(streaming);
   };
 
+  // Handle overlay position/size updates from drag and resize
+  const handleOverlayUpdate = async (overlayId, updatedOverlay) => {
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/api/overlays/${overlayId}`,
+        {
+          top: updatedOverlay.top,
+          left: updatedOverlay.left,
+          width: updatedOverlay.width,
+          height: updatedOverlay.height,
+        },
+      );
+
+      if (response.data.success) {
+        // Update local state with new positions
+        setOverlays((prevOverlays) =>
+          prevOverlays.map((overlay) =>
+            overlay._id === overlayId
+              ? { ...overlay, ...updatedOverlay }
+              : overlay,
+          ),
+        );
+        console.log("Overlay position updated successfully");
+      }
+    } catch (error) {
+      console.error("Error updating overlay position:", error);
+    }
+  };
+
   const tabs = [
     { id: "stream", label: "Stream", icon: FaPlay },
     { id: "overlays", label: "Overlays", icon: FaLayerGroup },
@@ -183,9 +212,7 @@ const LandingPage = () => {
                 <VideoPlayer
                   overlays={overlays}
                   isStreaming={isStreaming}
-                  onOverlayMove={(overlayId, isDragging) => {
-                    console.log("Overlay drag:", overlayId, isDragging);
-                  }}
+                  onOverlayUpdate={handleOverlayUpdate}
                 />
               </div>
             </div>

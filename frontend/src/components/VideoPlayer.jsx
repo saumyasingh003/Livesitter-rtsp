@@ -1,14 +1,276 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
 import { API_BASE_URL } from "../config";
 
-const VideoPlayer = ({ overlays = [], isStreaming = false, onOverlayMove }) => {
+const VideoPlayer = ({
+  overlays = [],
+  isStreaming = false,
+  onOverlayUpdate,
+}) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
+  const overlayContainerRef = useRef(null);
   const hlsRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState("");
+
+  // Drag and resize state
+  const [dragState, setDragState] = useState({
+    isDragging: false,
+    isResizing: false,
+    overlayId: null,
+    resizeHandle: null,
+    startX: 0,
+    startY: 0,
+    startTop: 0,
+    startLeft: 0,
+    startWidth: 0,
+    startHeight: 0,
+  });
+
+  // Local overlay positions for smooth dragging
+  const [localPositions, setLocalPositions] = useState({});
+
+  // Parse CSS value to number (handles px, %, etc.)
+  const parseValue = (value, containerSize = 0) => {
+    if (typeof value === "number") return value;
+    if (typeof value !== "string") return 0;
+    if (value.includes("%")) {
+      return (parseFloat(value) / 100) * containerSize;
+    }
+    return parseFloat(value) || 0;
+  };
+
+  // Convert pixel value to percentage
+  const toPercentage = (pixelValue, containerSize) => {
+    if (containerSize === 0) return "0%";
+    return `${((pixelValue / containerSize) * 100).toFixed(2)}%`;
+  };
+
+  // Get container dimensions
+  const getContainerDimensions = useCallback(() => {
+    if (overlayContainerRef.current) {
+      const rect = overlayContainerRef.current.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    }
+    return { width: 0, height: 0 };
+  }, []);
+
+  // Handle drag start
+  const handleDragStart = useCallback(
+    (e, overlayId) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+      const overlay = overlays.find((o) => o._id === overlayId);
+      if (!overlay) return;
+
+      const { width: containerWidth, height: containerHeight } =
+        getContainerDimensions();
+
+      setDragState({
+        isDragging: true,
+        isResizing: false,
+        overlayId,
+        resizeHandle: null,
+        startX: clientX,
+        startY: clientY,
+        startTop: parseValue(
+          localPositions[overlayId]?.top || overlay.top,
+          containerHeight,
+        ),
+        startLeft: parseValue(
+          localPositions[overlayId]?.left || overlay.left,
+          containerWidth,
+        ),
+        startWidth: 0,
+        startHeight: 0,
+      });
+    },
+    [overlays, localPositions, getContainerDimensions],
+  );
+
+  // Handle resize start
+  const handleResizeStart = useCallback(
+    (e, overlayId, handle) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+      const overlay = overlays.find((o) => o._id === overlayId);
+      if (!overlay) return;
+
+      const { width: containerWidth, height: containerHeight } =
+        getContainerDimensions();
+
+      setDragState({
+        isDragging: false,
+        isResizing: true,
+        overlayId,
+        resizeHandle: handle,
+        startX: clientX,
+        startY: clientY,
+        startTop: parseValue(
+          localPositions[overlayId]?.top || overlay.top,
+          containerHeight,
+        ),
+        startLeft: parseValue(
+          localPositions[overlayId]?.left || overlay.left,
+          containerWidth,
+        ),
+        startWidth: parseValue(
+          localPositions[overlayId]?.width || overlay.width || "100px",
+          containerWidth,
+        ),
+        startHeight: parseValue(
+          localPositions[overlayId]?.height || overlay.height || "100px",
+          containerHeight,
+        ),
+      });
+    },
+    [overlays, localPositions, getContainerDimensions],
+  );
+
+  // Handle mouse/touch move
+  const handleMove = useCallback(
+    (e) => {
+      if (!dragState.isDragging && !dragState.isResizing) return;
+
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+      const deltaX = clientX - dragState.startX;
+      const deltaY = clientY - dragState.startY;
+
+      const { width: containerWidth, height: containerHeight } =
+        getContainerDimensions();
+
+      if (dragState.isDragging) {
+        // Calculate new position
+        let newLeft = dragState.startLeft + deltaX;
+        let newTop = dragState.startTop + deltaY;
+
+        // Constrain to container bounds
+        newLeft = Math.max(0, Math.min(newLeft, containerWidth - 50));
+        newTop = Math.max(0, Math.min(newTop, containerHeight - 30));
+
+        setLocalPositions((prev) => ({
+          ...prev,
+          [dragState.overlayId]: {
+            ...prev[dragState.overlayId],
+            top: `${newTop}px`,
+            left: `${newLeft}px`,
+          },
+        }));
+      } else if (dragState.isResizing) {
+        let newWidth = dragState.startWidth;
+        let newHeight = dragState.startHeight;
+        let newLeft = dragState.startLeft;
+        let newTop = dragState.startTop;
+
+        const handle = dragState.resizeHandle;
+
+        // Calculate new dimensions based on resize handle
+        if (handle.includes("e")) {
+          newWidth = Math.max(30, dragState.startWidth + deltaX);
+        }
+        if (handle.includes("w")) {
+          const widthDelta = -deltaX;
+          newWidth = Math.max(30, dragState.startWidth + widthDelta);
+          newLeft = dragState.startLeft - widthDelta;
+        }
+        if (handle.includes("s")) {
+          newHeight = Math.max(20, dragState.startHeight + deltaY);
+        }
+        if (handle.includes("n")) {
+          const heightDelta = -deltaY;
+          newHeight = Math.max(20, dragState.startHeight + heightDelta);
+          newTop = dragState.startTop - heightDelta;
+        }
+
+        // Constrain to container bounds
+        newLeft = Math.max(0, newLeft);
+        newTop = Math.max(0, newTop);
+        newWidth = Math.min(newWidth, containerWidth - newLeft);
+        newHeight = Math.min(newHeight, containerHeight - newTop);
+
+        setLocalPositions((prev) => ({
+          ...prev,
+          [dragState.overlayId]: {
+            ...prev[dragState.overlayId],
+            top: `${newTop}px`,
+            left: `${newLeft}px`,
+            width: `${newWidth}px`,
+            height: `${newHeight}px`,
+          },
+        }));
+      }
+    },
+    [dragState, getContainerDimensions],
+  );
+
+  // Handle mouse/touch end
+  const handleEnd = useCallback(() => {
+    if (
+      (dragState.isDragging || dragState.isResizing) &&
+      dragState.overlayId &&
+      onOverlayUpdate
+    ) {
+      const position = localPositions[dragState.overlayId];
+      if (position) {
+        const overlay = overlays.find((o) => o._id === dragState.overlayId);
+        if (overlay) {
+          const updatedOverlay = {
+            ...overlay,
+            top: position.top || overlay.top,
+            left: position.left || overlay.left,
+          };
+
+          // Include width/height only for image overlays or if resizing
+          if (position.width) updatedOverlay.width = position.width;
+          if (position.height) updatedOverlay.height = position.height;
+
+          onOverlayUpdate(dragState.overlayId, updatedOverlay);
+        }
+      }
+    }
+
+    setDragState({
+      isDragging: false,
+      isResizing: false,
+      overlayId: null,
+      resizeHandle: null,
+      startX: 0,
+      startY: 0,
+      startTop: 0,
+      startLeft: 0,
+      startWidth: 0,
+      startHeight: 0,
+    });
+  }, [dragState, localPositions, overlays, onOverlayUpdate]);
+
+  // Add global event listeners for drag/resize
+  useEffect(() => {
+    if (dragState.isDragging || dragState.isResizing) {
+      window.addEventListener("mousemove", handleMove);
+      window.addEventListener("mouseup", handleEnd);
+      window.addEventListener("touchmove", handleMove);
+      window.addEventListener("touchend", handleEnd);
+
+      return () => {
+        window.removeEventListener("mousemove", handleMove);
+        window.removeEventListener("mouseup", handleEnd);
+        window.removeEventListener("touchmove", handleMove);
+        window.removeEventListener("touchend", handleEnd);
+      };
+    }
+  }, [dragState.isDragging, dragState.isResizing, handleMove, handleEnd]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -167,20 +429,6 @@ const VideoPlayer = ({ overlays = [], isStreaming = false, onOverlayMove }) => {
     }
   }, []);
 
-  const handleOverlayMouseDown = (e, overlayId) => {
-    e.preventDefault();
-    if (onOverlayMove) {
-      onOverlayMove(overlayId, true);
-    }
-  };
-
-  const handleOverlayMouseUp = (e, overlayId) => {
-    e.preventDefault();
-    if (onOverlayMove) {
-      onOverlayMove(overlayId, false);
-    }
-  };
-
   const handleVideoClick = async () => {
     const video = videoRef.current;
     if (video) {
@@ -211,40 +459,65 @@ const VideoPlayer = ({ overlays = [], isStreaming = false, onOverlayMove }) => {
     return overlay.type || (overlay.imageUrl ? "image" : "text");
   };
 
+  // Resize handles component
+  const ResizeHandles = ({ overlayId, overlayType }) => {
+    const handles = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
+
+    return (
+      <>
+        {handles.map((handle) => (
+          <div
+            key={handle}
+            className={`resize-handle resize-handle-${handle}`}
+            onMouseDown={(e) => handleResizeStart(e, overlayId, handle)}
+            onTouchStart={(e) => handleResizeStart(e, overlayId, handle)}
+          />
+        ))}
+      </>
+    );
+  };
+
   const renderOverlay = (overlay) => {
     const overlayType = getOverlayType(overlay);
+    const isActive = dragState.overlayId === overlay._id;
+    const localPos = localPositions[overlay._id] || {};
 
     if (overlayType === "image") {
       return (
         <div
           key={overlay._id}
-          className="overlay-item"
+          className={`overlay-item overlay-draggable ${isActive ? "overlay-active" : ""}`}
           style={{
-            top: overlay.top,
-            left: overlay.left,
+            top: localPos.top || overlay.top,
+            left: localPos.left || overlay.left,
+            width: localPos.width || overlay.width || "100px",
+            height: localPos.height || overlay.height || "100px",
             padding: 0,
             backgroundColor: "transparent",
-            border: "none",
+            cursor: dragState.isDragging && isActive ? "grabbing" : "grab",
           }}
-          onMouseDown={(e) => handleOverlayMouseDown(e, overlay._id)}
-          onMouseUp={(e) => handleOverlayMouseUp(e, overlay._id)}
-          title={`Image Overlay`}
+          onMouseDown={(e) => handleDragStart(e, overlay._id)}
+          onTouchStart={(e) => handleDragStart(e, overlay._id)}
+          title="Drag to move, use handles to resize"
         >
           <img
             src={overlay.imageUrl}
             alt="Overlay"
+            draggable={false}
             style={{
-              width: overlay.width || "100px",
-              height: overlay.height || "100px",
+              width: "100%",
+              height: "100%",
               opacity: overlay.opacity || 1,
               borderRadius: overlay.borderRadius || "0px",
               objectFit: "cover",
               display: "block",
+              pointerEvents: "none",
             }}
             onError={(e) => {
               e.target.style.display = "none";
             }}
           />
+          <ResizeHandles overlayId={overlay._id} overlayType={overlayType} />
         </div>
       );
     }
@@ -253,19 +526,27 @@ const VideoPlayer = ({ overlays = [], isStreaming = false, onOverlayMove }) => {
     return (
       <div
         key={overlay._id}
-        className="overlay-item"
+        className={`overlay-item overlay-draggable ${isActive ? "overlay-active" : ""}`}
         style={{
-          top: overlay.top,
-          left: overlay.left,
+          top: localPos.top || overlay.top,
+          left: localPos.left || overlay.left,
+          width: localPos.width || "auto",
+          height: localPos.height || "auto",
+          minWidth: "50px",
+          minHeight: "20px",
           fontSize: overlay.fontSize,
           color: overlay.color,
           backgroundColor: overlay.backgroundColor || "rgba(0,0,0,0.5)",
+          cursor: dragState.isDragging && isActive ? "grabbing" : "grab",
         }}
-        onMouseDown={(e) => handleOverlayMouseDown(e, overlay._id)}
-        onMouseUp={(e) => handleOverlayMouseUp(e, overlay._id)}
-        title={`Overlay: ${overlay.text}`}
+        onMouseDown={(e) => handleDragStart(e, overlay._id)}
+        onTouchStart={(e) => handleDragStart(e, overlay._id)}
+        title="Drag to move, use handles to resize"
       >
-        {overlay.text}
+        <span style={{ pointerEvents: "none", userSelect: "none" }}>
+          {overlay.text}
+        </span>
+        <ResizeHandles overlayId={overlay._id} overlayType={overlayType} />
       </div>
     );
   };
@@ -397,8 +678,25 @@ const VideoPlayer = ({ overlays = [], isStreaming = false, onOverlayMove }) => {
       </div>
 
       {/* Overlays Container */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
+      <div
+        ref={overlayContainerRef}
+        className="absolute inset-0 overflow-hidden rounded-xl"
+        style={{
+          pointerEvents:
+            dragState.isDragging || dragState.isResizing ? "auto" : "none",
+        }}
+      >
         {overlays.map(renderOverlay)}
+
+        {/* Drag/Resize Instructions */}
+        {overlays.length > 0 && (
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 backdrop-blur-sm text-white/80 px-3 py-1.5 rounded-lg text-xs pointer-events-none">
+            <span className="flex items-center gap-2">
+              <span>✋</span>
+              <span>Drag overlays to move • Use corners to resize</span>
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
